@@ -4,7 +4,7 @@ class Announcer {
     }
     showMessage (message, autoHide) {
         autoHide = autoHide || false;
-        setTitle(message.title);
+        this.container.querySelector('.title').innerHTML = (typeof title === 'undefined') ? '' : title;
         this.container.querySelector('.subtitle').innerHTML = (typeof message.subtitle === 'undefined') ? '' : message.subtitle;
         this.container.classList.add('visible');
         if (autoHide) {

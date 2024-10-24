@@ -85,92 +85,92 @@ class Sound {
 };
 
 window.AudioContext = window.AudioContext || window.webkitAudioContext;
-const context = new AudioContext();
-const masterGain = context.createGain();
-masterGain.connect(context.destination);
-
-export const sfx = {
-    sounds: {
-        gun: {
-            play: (ship, firepower) => {
-                x = ship.x / 100;
-                y = ship.y / 100;
-                vx = ship.vx / 5;
-                vy = ship.vy / 5;
-                sfxGun.setPosition(x, y, -3);
-                // sfxGun.setVelocity(vx, vy, 0);
-                sfxGun.setPlaybackRate(0.5 + firepower / 20);
-                sfxGun.play(masterGain);
-            }
-        },
-        ship: {
-            play: (x, y) => {
-                x /= 100;
-                y /= 100;
-                sfxShip.setPosition(x, y, -3);
-                sfxShip.play(masterGain, true);
+export class SFX {
+    constructor () {
+        this.sfxGun = null;
+        this.sfxShip = null;
+        this.sfxExplosion = null;
+        this.sfxAlien = null;
+        this.sfxAlarm = null;
+        
+        this.context = new AudioContext();
+        this.masterGain = this.context.createGain();
+        this.masterGain.connect(this.context.destination);
+        this.sounds = {
+            gun: {
+                play: (ship, firepower) => {
+                    // vx = ship.vx / 5;
+                    // vy = ship.vy / 5;
+                    this.sfxGun.setPosition(ship.x / 100, ship.y / 100, -3);
+                    // sfxGun.setVelocity(vx, vy, 0);
+                    this.sfxGun.setPlaybackRate(0.5 + firepower / 20);
+                    this.sfxGun.play(this.masterGain);
+                }
             },
-            setParameters: (x, y, vx, vy) => {
-                x /= 50;
-                y /= 50;
-                vx /= 10;
-                vy /= 10;
-                sfxShip.setPosition(x, y, -3);
-                // sfxShip.setVelocity(vx, vy, 0);
-            }
-        },
-        explosion: {
-            play: (x, y, z) => {
-                x /= 100;
-                y /= 100;
-                z /= 1000;
-                sfxExplosion.setPosition(x, y, z);
-                sfxExplosion.play(masterGain);
-            }
-        },
-        alien: {
-            play: (x, y, z) => {
-                x /= 100;
-                y /= 100;
-                z /= 1000;
-                sfxAlien.setPosition(x, y, z);
-                sfxAlien.play(masterGain);
-            }
-        },
-        alienDrone: {
-            create: () => {
-                const sfxAlienDrone = new Sound(bufferList[4], context);
-                sfxAlienDrone.setPannerParameters({
-                    coneOuterGain: 0.1,
-                    coneOuterAngle: 90,
-                    coneInnerAngle: 0,
-                    rolloffFactor: 2
-                });
-                sfxAlienDrone.setGain(1.5);
-                sfxAlienDrone.play(masterGain, true);
-                return sfxAlienDrone;
+            ship: {
+                play: (x, y) => {
+                    x /= 100;
+                    y /= 100;
+                    this.sfxShip.setPosition(x, y, -3);
+                    this.sfxShip.play(this.masterGain, true);
+                },
+                setParameters: (x, y, vx, vy) => {
+                    x /= 50;
+                    y /= 50;
+                    vx /= 10;
+                    vy /= 10;
+                    this.sfxShip.setPosition(x, y, -3);
+                    // sfxShip.setVelocity(vx, vy, 0);
+                }
             },
-            /**
-             * We take the alien and the ship as parameters so we can calculate the distance between the two,
-             * which determines the panning.
-             * @param sound
-             * @param alien
-             * @param ship
-             */
-            setParameters: (sound, alien, ship) => {
-                x = (alien.x - ship.x) / 100;
-                y = (alien.y - ship.y) / 100;
-                z = alien.z / 1000;
-                sound.setPosition(x, y, z);
+            explosion: {
+                play: (x, y, z) => {
+                    x /= 100;
+                    y /= 100;
+                    z /= 1000;
+                    this.sfxExplosion.setPosition(x, y, z);
+                    this.sfxExplosion.play(this.masterGain);
+                }
+            },
+            alien: {
+                play: (x, y, z) => {
+                    x /= 100;
+                    y /= 100;
+                    z /= 1000;
+                    this.sfxAlien.setPosition(x, y, z);
+                    this.sfxAlien.play(this.masterGain);
+                }
+            },
+            alienDrone: {
+                create: () => {
+                    const sfxAlienDrone = new Sound(this.bufferList[4], this.context);
+                    sfxAlienDrone.setPannerParameters({
+                        coneOuterGain: 0.1,
+                        coneOuterAngle: 90,
+                        coneInnerAngle: 0,
+                        rolloffFactor: 2
+                    });
+                    sfxAlienDrone.setGain(1.5);
+                    sfxAlienDrone.play(this.masterGain, true);
+                    return sfxAlienDrone;
+                },
+                /**
+                 * We take the alien and the ship as parameters so we can calculate the distance between the two,
+                 * which determines the panning.
+                 * @param sound
+                 * @param alien
+                 * @param ship
+                 */
+                setParameters: (sound, alien, ship) => sound.setPosition((alien.x - ship.x) / 100, (alien.y - ship.y) / 100, alien.z / 1000)
+            },
+            alarm: {
+                play: () => this.sfxAlarm.play(this.masterGain)
             }
-        },
-        alarm: {
-            play: () => sfxAlarm.play(masterGain)
-        }
-    },
-    loadSounds: callback => {
+        };
+    }
+    loadSounds (callback) {
         const bufferLoader = new BufferLoader(
-            context,
+            this.context,
             [
                 'assets/sfx/gun.mp3',
                 'assets/sfx/ship_drone.mp3',
@@ -180,35 +180,35 @@ export const sfx = {
                 'assets/sfx/alarm.mp3'
             ],
             bufferList => {
-                const sfxGun = new Sound(bufferList[0], context);
-                const sfxShip = new Sound(bufferList[1], context);
-                const sfxExplosion = new Sound(bufferList[2], context);
-                const sfxAlien = new Sound(bufferList[3], context);
-                const sfxAlarm = new Sound(bufferList[5], context);
+                this.sfxGun = new Sound(bufferList[0], this.context);
+                this.sfxShip = new Sound(bufferList[1], this.context);
+                this.sfxExplosion = new Sound(bufferList[2], this.context);
+                this.sfxAlien = new Sound(bufferList[3], this.context);
+                this.sfxAlarm = new Sound(bufferList[5], this.context);
+                this.bufferList = bufferList;
                 // set some initial values
-                sfxExplosion.setGain(2);
-                sfxAlien.setGain(2);
-                sfxGun.setPannerParameters({
+                this.sfxExplosion.setGain(2);
+                this.sfxAlien.setGain(2);
+                this.sfxGun.setPannerParameters({
                     coneOuterGain: 0.9,
                     coneOuterAngle: 40,
                     coneInnerAngle: 0,
                     rolloffFactor: 0.1
                 });
-                sfxGun.setGain(0.1);
-                sfxShip.setPannerParameters({
+                this.sfxGun.setGain(0.1);
+                this.sfxShip.setPannerParameters({
                     coneOuterGain: 1,
                     coneOuterAngle: 360,
                     coneInnerAngle: 0,
                     rolloffFactor: 0.3
                 });
-                sfxShip.setGain(2.5);
+                this.sfxShip.setGain(2.5);
                 callback();
             }
         );
         bufferLoader.load();
-    },
-    setGain: value => {
-        masterGain.gain.value = value;
+    }
+    setGain (value) {
+        this.masterGain.gain.value = value;
     }
 };
-

@@ -130,6 +130,7 @@ export default (({ asserter, logger, groupStarter, groupEnder, warner } = ((mess
         try {
             result = originalMethod.apply(this, parameters);
         } catch (error) {
+            console.error(error);
             result = new originalMethod(...parameters);
         }
         currentController = controller;

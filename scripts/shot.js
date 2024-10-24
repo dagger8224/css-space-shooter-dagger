@@ -90,7 +90,7 @@ export const shotFactory = {
             }
         }
         // remove any shots that have gone too distant
-        for(i = shotsToRemove.length - 1; i >= 0; --i) {
+        for(let i = shotsToRemove.length - 1; i >= 0; --i) {
             const el = shots[shotsToRemove[i]].el;
             shots.splice(shotsToRemove[i], 1);
             document.querySelector('.scene').removeChild(el);

@@ -2,7 +2,7 @@
 <html>
 <head lang="en">
     <meta charset="UTF-8">
-    <title>3D小蜜蜂 [dagger.js版本]</title>
+    <title>3D打飞机 [dagger.js版本]</title>
     <meta property="twitter:card" content="summary" />
     <meta property="twitter:site" content="@michlbrmly" />
     <meta property="twitter:title" content="CSS Space Shooter" />
@@ -33,7 +33,7 @@
             track: './scripts/track.js',
             visualizer: './scripts/visualizer.js',
             music: './scripts/music.js',
-            game: './scripts/game.js'
+            'game': './scripts/game.js'
         }
     </script>
     <!--<script type="dagger/options">
@@ -45,19 +45,17 @@
         }
     </style>-->
 </head>
-<body *loaded="console.error($module), game.init($module)">
+<body *load="console.error($module), { game: new Game($module) }">
 
 <div class="visualizer">
     <div class="highs"></div>
     <div class="lows"></div>
 </div>
-
 <div class="scene">
     <div class="face background">
         <div class="planet"></div>
         <div class="stars"></div>
     </div>
-
     <div class="face midground">
         <div class="track-container">
             <div class="face track top"></div>
@@ -75,7 +73,6 @@
             <div class="face track bottom"></div>
         </div>
     </div>
-
     <div class="face ship-container">
         <div class="face ship hull top"></div>
         <div class="face ship hull bottom"></div>
@@ -87,9 +84,7 @@
         <div class="face ship gun left"></div>
         <div class="face ship gun right"></div>
     </div>
-
     <div class="face shot"></div>
-
     <div class="face alien-container">
         <div class="face alien body"></div>
         <div class="face alien eye left"></div>
@@ -101,10 +96,7 @@
             <div class="face alien arm bottom"></div>
         </div>
     </div>
-
 </div>
-
-
 <div class="overlay">
     <div class="firepower-meter-container hidden">
         <span class="firepower-meter"><span>Firepower</span></span>
@@ -121,19 +113,16 @@
         <div class="life">&#9734;</div>
         <div class="life">&#9734;</div>
     </div>
-
     <div class="title-screen-container">
-
         <div class="gh-star-container">
             <iframe src="https://ghbtns.com/github-btn.html?user=dagger8224&repo=dagger.js&type=watch&count=true"
                                                            allowtransparency="true" frameborder="0" scrolling="0" width="110" height="20"></iframe>
         </div>
         <div class="title-container">
-            <div class="line1">小蜜蜂</div>
+            <div class="line1">打飞机</div>
             <div class="line2">3D</div>
             <div class="line3">dagger.js版本</div>
         </div>
-
         <div class="instructions info-container">
             <div class="open-instructions open-info-container">Instructions</div>
             <div class="instructions-body info-body">
@@ -146,11 +135,10 @@
                 <h3 class="close-instructions close-info-container">OKAY</h3>
             </div>
         </div>
-
         <div class="about info-container">
             <div class="open-about open-info-container">About</div>
             <div class="about-body info-body">
-                <p>3d小蜜蜂是一个h5射击游戏demo，原游戏由原生javaScript + css实现，作者为Michael Bromley。当前版本采用<a href="https://daggerjs.org" target="_blank">dagger.js</a>改写。以下为原版本说明：</p>
+                <p>3d打飞机是一个h5射击游戏demo，原游戏由原生javaScript + css实现，作者为Michael Bromley。当前版本采用<a href="https://daggerjs.org" target="_blank">dagger.js</a>改写。以下为原版本说明：</p>
                 <p>CSS Space Shooter is an experiment in 3D rendering using only the DOM and <a href="https://desandro.github.io/3dtransforms/" target="_blank">CSS transforms</a>.
                     No canvas, webGL or images of any kind are used to render the game.</p>
                 <p>Sound effects, music and audio visualization is handled by the <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API" target="_blank">Web Audio API</a>.</p>
@@ -160,22 +148,17 @@
                 <h3 class="close-about close-info-container">OKAY</h3>
             </div>
         </div>
-
         <h3 class="start-sign">Press space to start!</h3>
     </div>
-
     <div class="game-over-container hidden">
         <div class="game-won hidden">
             <h1>Congratulations!</h1>
             <h2>You Won!</h2>
         </div>
-
-
         <div class="game-lost hidden">
             <h1>You Lost!</h1>
             <h2>Better Luck Next Time</h2>
         </div>
-
         <div class="score-card">
             <ul>
                 <li>
@@ -188,48 +171,30 @@
                 </li>
             </ul>
         </div>
-
         <h3 class="replay-sign">Press "R" to replay</h3>
     </div>
 </div>
-
 <div class="loader">
     <h1>Loading...</h1>
 </div>
-
-<div class="browser-warning">
+<div class="browser-warning" style="display: none;">
     This experiment might not work properly unless you run it in the latest versions of the <a href="https://www.google.com/chrome/browser/">Chrome browser</a>. Sorry!
 </div>
-
 <audio id="player" controls="" autoplay="" preload autobuffer></audio>
-
 <script>
-    if (isChrome()) {
-        document.querySelector('.browser-warning').style.display = 'none';
-    }
-    /**
-     * Currently only really works well in Chrome, so we need to show a warning if not Chrome.
-     * @returns {boolean}
-     */
-    function isChrome() {
-        return navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
-    }
+    const ALIEN_CLASS = {
+        stationary: 1,
+        vertical: 2,
+        horizontal: 3,
+        spiral: 4,
+        random: 5
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!navigator.userAgent.toLowerCase().includes('chrome')) {
+            document.querySelector('.browser-warning').style.display = 'block';
+        }
+    });
 </script>
-<!-- inject:js -->
-<!--<script src="scripts/alien.js"></script>
-<script src="scripts/collisionDetector.js"></script>
-<script src="scripts/display.js"></script>
-<script src="scripts/level.js"></script>
-<script src="scripts/noise.js"></script>
-<script src="scripts/sfx.js"></script>
-<script src="scripts/ship.js"></script>
-<script src="scripts/shot.js"></script>
-<script src="scripts/track.js"></script>
-<script src="scripts/visualizer.js"></script>
-<script src="scripts/music.js"></script>
-<script src="scripts/game.js"></script>-->
-<!-- endinject -->
-
 <!-- inject:analytics -->
 <!-- endinject -->
 </body>

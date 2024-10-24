@@ -5,14 +5,6 @@ let currentStageIndex = 0;
 let levelCompleted = false;
 let levelData = null;
 
-const ALIEN_CLASS = {
-    stationary: 1,
-    vertical: 2,
-    horizontal: 3,
-    spiral: 4,
-    random: 5
-};
-
 const baselevel = [
     {
         events: [
@@ -357,7 +349,7 @@ const getEventAtTime = (secondsElapsed, currentStage) => {
     }
 };
  
- export const levelPlayer = {
+export const levelPlayer = {
     resetLevel: () => {
         levelData = JSON.parse(JSON.stringify(baselevel));
     },
