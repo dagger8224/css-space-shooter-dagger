@@ -1,106 +1,11 @@
-/**
- * Created by Michael on 08/10/2014.
- */
+let lastTimeStamp = 0;
+let timeElapsed = 0;
+let activeAliens = 0;
+let currentStageIndex = 0;
+let levelCompleted = false;
+let levelData = null;
 
-/**
- * Reads the levelData array and emits any events that occur at a given timestamp
- */
-var levelPlayer = (function() {
-    var module = {};
-    var lastTimeStamp,
-        timeElapsed = 0,
-        levelData,
-        activeAliens = 0,
-        currentStageIndex = 0,
-        levelCompleted = false;
-
-    module.setLevel = function(level) {
-        levelData = JSON.parse(JSON.stringify(level));
-    };
-
-    module.getEvents = function(timestamp) {
-        var currentStage;
-
-        currentStage = getCurrentStage();
-        var secondsElapsed = getSecondsElapsed(timestamp);
-        return getEventAtTime(secondsElapsed, currentStage);
-    };
-
-    module.alienRemoved = function() {
-        activeAliens = Math.max(activeAliens - 1, 0);
-    };
-
-    module.getCurrentStage = function() {
-        return Math.round(currentStageIndex + 1);
-    };
-
-    function getSecondsElapsed(timestamp) {
-        if (typeof lastTimeStamp === 'undefined' ||
-            100 < timestamp - lastTimeStamp) {
-            lastTimeStamp = timestamp;
-        }
-        timeElapsed += (timestamp - lastTimeStamp);
-        lastTimeStamp = timestamp;
-        return Math.floor(timeElapsed / 1000);
-    }
-
-    function getCurrentStage() {
-        if (allStageEventsFired() && activeAliens === 0) {
-            if (currentStageIndex < levelData.length - 1) {
-                currentStageIndex++;
-                activeAliens = 0;
-                timeElapsed = 0;
-            } else {
-                levelCompleted = true;
-            }
-        }
-        return levelData[currentStageIndex];
-    }
-
-    function allStageEventsFired() {
-        var stageEvents = levelData[currentStageIndex].events;
-        return stageEvents[stageEvents.length - 1].fired === true;
-    }
-
-    function getEventAtTime(secondsElapsed, currentStage) {
-        var e, event;
-
-        if (!levelCompleted) {
-            for (e = 0; e < currentStage.events.length; e++) {
-                event = currentStage.events[e];
-
-                if (event.time === secondsElapsed) {
-                    if (!event.fired) {
-                        event.fired = true;
-                        setActiveAliens(event);
-                        return event;
-                    }
-                }
-            }
-            return {};
-        } else {
-            // return level complete event
-            return {
-                type: 'completed'
-            };
-        }
-    }
-
-    function setActiveAliens(event) {
-        if (event.type === 'spawn') {
-            activeAliens += event.data.length;
-        }
-    }
-
-    return module;
-})();
-
-/**
- * An "enum" of the different types of alien
- *
- * @type {{stationary: number, vertical: number, horizontal: number, spiral: number, random: number}}
- */
-var ALIEN_CLASS = {
+const ALIEN_CLASS = {
     stationary: 1,
     vertical: 2,
     horizontal: 3,
@@ -108,12 +13,7 @@ var ALIEN_CLASS = {
     random: 5
 };
 
-/**
- * This array describes the game level structure.
- *
- * @type {{name: string, duration: number, sequence: {time: number, spawn: *[]}[]}[]}
- */
-var levelData = [
+const baselevel = [
     {
         events: [
             { time: 2, type: 'announcement', data: { title: 'Stage 1', subtitle: 'Flight School!'} },
@@ -408,3 +308,62 @@ var levelData = [
         ]
     }
 ];
+
+const getSecondsElapsed = timestamp => {
+    if (typeof lastTimeStamp === 'undefined' ||
+        100 < timestamp - lastTimeStamp) {
+        lastTimeStamp = timestamp;
+    }
+    timeElapsed += (timestamp - lastTimeStamp);
+    lastTimeStamp = timestamp;
+    return Math.floor(timeElapsed / 1000);
+};
+
+const getCurrentStage = () => {
+    const stageEvents = levelData[currentStageIndex].events;
+    if (stageEvents[stageEvents.length - 1].fired && activeAliens === 0) {
+        if (currentStageIndex < levelData.length - 1) {
+            currentStageIndex++;
+            activeAliens = 0;
+            timeElapsed = 0;
+        } else {
+            levelCompleted = true;
+        }
+    }
+    return levelData[currentStageIndex];
+};
+
+const getEventAtTime = (secondsElapsed, currentStage) => {
+    if (!levelCompleted) {
+        for (let e = 0; e < currentStage.events.length; e++) {
+            const event = currentStage.events[e];
+
+            if (event.time === secondsElapsed) {
+                if (!event.fired) {
+                    event.fired = true;
+                    if (event.type === 'spawn') {
+                        activeAliens += event.data.length;
+                    }
+                    return event;
+                }
+            }
+        }
+        return {};
+    } else {
+        // return level complete event
+        return {
+            type: 'completed'
+        };
+    }
+};
+ 
+ export const levelPlayer = {
+    resetLevel: () => {
+        levelData = JSON.parse(JSON.stringify(baselevel));
+    },
+    getEvents: timestamp => getEventAtTime(getSecondsElapsed(timestamp), getCurrentStage()),
+    alienRemoved: () => {
+        activeAliens = Math.max(activeAliens - 1, 0);
+    },
+    getCurrentStage: () => Math.round(currentStageIndex + 1)
+ };

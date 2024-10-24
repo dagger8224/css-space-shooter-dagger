@@ -1,228 +1,148 @@
-/**
- * ALien class.
- *
- * @param el
- * @param x
- * @param y
- * @param config
- * @constructor
- */
-function Alien(el, x, y, config) {
-    var self = this;
-    var zSpeed = 1000; // how fast it advances towards the player
-    var range = -15000;
-    self.el = el;
-    self.el.classList.add(config.colorClass);
-    self.x = x;
-    self.y = y;
-    self.z = range;
-    self.actualX = x; // actual values include modifications made by the motion function, and should be
-    self.actualY = y; // used by external methods to query the actual position of the alien.
-    self.lastTimestamp = null;
-    self.motionFunction = config.motionFunction;
-    self.hit = false; // has the alien been hit by a shot?
-    self.destroyed = false; // has it exploded from being hit?
+let alienElement = null;
+const range = -15000;
+const aliens = [];
+const viewportWidth = document.documentElement.clientWidth;
+const viewportHeight = document.documentElement.clientHeight;
 
-    /**
-     * The shipX and shipY is the position of the ship, which affects how the shots will be offset
-     * @param shipX
-     * @param shipY
-     * @param timestamp
-     * @returns {boolean}
-     */
-    self.updatePosition = function(shipX, shipY, timestamp) {
-        var actualPosition = applyMotionFunction();
-        var offsetX = self.x - shipX;
-        var offsetY = self.y - shipY;
-        var opacity =  Math.min(1 - self.z / range / 2, 1);
+class Alien {
+    constructor (el, x, y, config) {
+        this.el = el;
+        this.el.classList.add(config.colorClass);
+        this.x = x;
+        this.y = y;
+        this.z = range;
+        this.actualX = x; // actual values include modifications made by the motion function, and should be
+        this.actualY = y; // used by external methods to query the actual position of the alien.
+        this.lastTimestamp = null;
+        this.motionFunction = config.motionFunction;
+        this.hit = false; // has the alien been hit by a shot?
+        this.destroyed = false; // has it exploded from being hit?
+    }
+    updatePosition (shipX, shipY, timestamp) {
+        const actualPosition = this.motionFunction.call(this);
+        const offsetX = this.x - shipX;
+        const offsetY = this.y - shipY;
+        const opacity =  Math.min(1 - this.z / range / 2, 1);
 
-        self.actualX = actualPosition.x;
-        self.actualY = actualPosition.y;
+        this.actualX = actualPosition.x;
+        this.actualY = actualPosition.y;
 
-        if (self.lastTimestamp === null ||
-            100 < timestamp - self.lastTimestamp) {
-            self.lastTimestamp = timestamp;
+        if (this.lastTimestamp === null || 100 < timestamp - this.lastTimestamp) {
+            this.lastTimestamp = timestamp;
         }
-        self.z += (timestamp - self.lastTimestamp) / 1000 * zSpeed;
-        self.lastTimestamp = timestamp;
+        const zSpeed = 1000; // how fast it advances towards the player
+        this.z += (timestamp - this.lastTimestamp) / 1000 * zSpeed;
+        this.lastTimestamp = timestamp;
 
-        self.el.style.transform =
-            'translateY(' + (actualPosition.y + offsetY) + 'px) ' +
-            'translateX(' + (actualPosition.x + offsetX) + 'px) ' +
-            'translateZ(' + self.z + 'px) ';
-        self.el.style.opacity = opacity;
-        self.el.style.display = 'block';
-
-        if (self.hit) {
+        this.el.style.transform = `translateY(${actualPosition.y + offsetY}px) translateX(${actualPosition.x + offsetX}px) translateZ(${this.z}px)`;
+        this.el.style.opacity = opacity;
+        this.el.style.display = 'block';
+        if (this.hit) {
             destroy();
         }
 
-        if (500 < self.z && self.hit === false) {
+        if (500 < this.z && this.hit === false) {
             emitMissEvent();
         }
 
-        return 500 < self.z || self.destroyed;
-    };
-
-    function applyMotionFunction() {
-        return self.motionFunction.call(self);
+        return 500 < this.z || this.destroyed;
     }
-
-    function destroy() {
-        self.el.classList.add('hit');
-        setTimeout(function() {
-            self.destroyed = true;
+    destroy () {
+        this.el.classList.add('hit');
+        setTimeout(() => {
+            this.destroyed = true;
         }, 1200);
     }
-
-    function emitMissEvent() {
-        var event = new CustomEvent('miss', { 'detail': -500 });
+    emitMissEvent() {
+        const event = new CustomEvent('miss', { 'detail': -500 });
         document.dispatchEvent(event);
     }
-}
+};
 
-
-var alienFactory = (function() {
-    var alienElement;
-    var aliens = [];
-    var viewportWidth = document.documentElement.clientWidth;
-    var viewportHeight = document.documentElement.clientHeight;
-
-    return {
-
-        setTemplate: function(el) {
-            alienElement = el.cloneNode(true);
-        },
-
-        spawn: function(event) {
-            if (event.type && event.type === 'spawn') {
-                event.data.forEach(function (alienDefinition) {
-
-                    var newElement = alienElement.cloneNode(true);
-                    var spawnX = viewportWidth * (Math.random() - 0.5) * 0.7;
-                    var spawnY = viewportHeight * (Math.random() - 0.5) * 0.5;
-                    var sceneDiv = document.querySelector('.scene');
-                    var config = getAlienConfig(alienDefinition);
-
-                    sceneDiv.insertBefore(newElement, sceneDiv.children[0]);
-                    aliens.push(new Alien(newElement, spawnX, spawnY, config));
+export const alienFactory = {
+    setTemplate: el => {
+        alienElement = el.cloneNode(true);
+    },
+    spawn: event => {
+        if (event.type && event.type === 'spawn') {
+            event.data.forEach(alienDefinition => {
+                const newElement = alienElement.cloneNode(true);
+                const spawnX = viewportWidth * (Math.random() - 0.5) * 0.7;
+                const spawnY = viewportHeight * (Math.random() - 0.5) * 0.5;
+                const sceneDiv = document.querySelector('.scene');
+                let motionFunction = null;
+                let colorClass = null;
+                /**
+                 * Alien motion functions. All take the z position of the alien as an argument, and return
+                 * an object with x and y properties.
+                 * The functions are called within the context of an alien object, so `this` will refer to
+                 * the alien itself.
+                 */
+                const noMotion = () => ({
+                    x: this.x,
+                    y: this.y
                 });
-            }
-        },
-
-        updatePositions: function(ship, timestamp) {
-            var el, remove, i, aliensToRemove = [];
-
-            for(i = 0; i < aliens.length; i++) {
-                remove = aliens[i].updatePosition(ship.x, ship.y, timestamp);
-                if (remove) {
-                    aliensToRemove.push(i);
+                const verticalOscillation = speed => (() => ({
+                    x: this.x,
+                    y: this.y + Math.sin(this.z / 1000 * speed) * viewportHeight / 4
+                }));
+                const horizontalOscillation = speed => (() => ({
+                    x: this.x + Math.sin(this.z / 1000 * speed) * viewportWidth / 4,
+                    y: this.y
+                }));
+                const spiral = speed => (() => ({
+                    x: this.x + Math.sin(this.z / 1000 * speed) * viewportWidth / 4,
+                    y: this.y + Math.cos(this.z / 1000 * speed) * viewportWidth / 4
+                }));
+                const random = speed => {
+                    const noiseX = new Simple1DNoise(viewportWidth/2);
+                    const noiseY = new Simple1DNoise(viewportHeight/2);
+                    return () => ({
+                        x: this.x + noiseX.getVal(this.z / 1000 * speed),
+                        y: this.y + noiseY.getVal(this.z / 1000 * speed)
+                    });
+                };
+                if (alienDefinition.class === ALIEN_CLASS.stationary) {
+                    motionFunction = noMotion;
+                    colorClass = 'orange';
+                } else if (alienDefinition.class === ALIEN_CLASS.vertical) {
+                    motionFunction = verticalOscillation(alienDefinition.speed);
+                    colorClass = 'red';
+                } else if (alienDefinition.class === ALIEN_CLASS.horizontal) {
+                    motionFunction = horizontalOscillation(alienDefinition.speed);
+                    colorClass = 'blue';
+                } else if (alienDefinition.class === ALIEN_CLASS.spiral) {
+                    motionFunction = spiral(alienDefinition.speed);
+                    colorClass = 'green';
+                } else if (alienDefinition.class === ALIEN_CLASS.random) {
+                    motionFunction = random(alienDefinition.speed);
+                    colorClass = 'white';
                 }
-            }
-
-            // remove any aliens that have made it past the player
-            for(i = aliensToRemove.length - 1; i >= 0; --i) {
-                el = aliens[aliensToRemove[i]].el;
-                var removedAliens = aliens.splice(aliensToRemove[i], 1);
-                removedAliens[0].sound.stop();
-                document.querySelector('.scene').removeChild(el);
-            }
-
-            return aliensToRemove.length;
-        },
-
-        aliens: function() {
-            return aliens;
+                sceneDiv.insertBefore(newElement, sceneDiv.children[0]);
+                aliens.push(new Alien(newElement, spawnX, spawnY, {
+                    motionFunction,
+                    colorClass
+                }));
+            });
         }
-    };
-
-
-
-    function getAlienConfig(alienDefinition) {
-        var motionFunction, colorClass;
-
-        /**
-         * Alien motion functions. All take the z position of the alien as an argument, and return
-         * an object with x and y properties.
-         * The functions are called within the context of an alien object, so `this` will refer to
-         * the alien itself.
-         */
-        var noMotion = function() {
-            return {
-                x: this.x,
-                y: this.y
-            };
-        };
-
-        var verticalOscillation = function(speed) {
-            return function() {
-                var y = this.y + Math.sin(this.z / 1000 * speed) * viewportHeight / 4;
-                var x = this.x;
-                return {
-                    x: x,
-                    y: y
-                };
+    },
+    updatePositions: (ship, timestamp) => {
+        let el = null;
+        let remove = null;
+        const aliensToRemove = [];
+        for(let i = 0; i < aliens.length; i++) {
+            remove = aliens[i].updatePosition(ship.x, ship.y, timestamp);
+            if (remove) {
+                aliensToRemove.push(i);
             }
-        };
-
-        var horizontalOscillation = function(speed) {
-            return function() {
-                var y = this.y;
-                var x = this.x + Math.sin(this.z / 1000 * speed) * viewportWidth / 4;
-                return {
-                    x: x,
-                    y: y
-                };
-            }
-        };
-
-        var spiral = function(speed) {
-            return function() {
-                var y = this.y + Math.cos(this.z / 1000 * speed) * viewportWidth / 4;
-                var x = this.x + Math.sin(this.z / 1000 * speed) * viewportWidth / 4;
-                return {
-                    x: x,
-                    y: y
-                };
-            }
-        };
-
-        var random = function(speed) {
-            var noiseX = new Simple1DNoise();
-            noiseX.setAmplitude(viewportWidth/2);
-            var noiseY = new Simple1DNoise();
-            noiseY.setAmplitude(viewportHeight/2);
-
-            return function() {
-                var y = this.y + noiseY.getVal(this.z / 1000 * speed);
-                var x = this.x + noiseX.getVal(this.z / 1000 * speed);
-                return {
-                    x: x,
-                    y: y
-                };
-            }
-        };
-
-        if (alienDefinition.class === ALIEN_CLASS.stationary) {
-            motionFunction = noMotion;
-            colorClass = 'orange';
-        } else if (alienDefinition.class === ALIEN_CLASS.vertical) {
-            motionFunction = verticalOscillation(alienDefinition.speed);
-            colorClass = 'red';
-        } else if (alienDefinition.class === ALIEN_CLASS.horizontal) {
-            motionFunction = horizontalOscillation(alienDefinition.speed);
-            colorClass = 'blue';
-        } else if (alienDefinition.class === ALIEN_CLASS.spiral) {
-            motionFunction = spiral(alienDefinition.speed);
-            colorClass = 'green';
-        } else if (alienDefinition.class === ALIEN_CLASS.random) {
-            motionFunction = random(alienDefinition.speed);
-            colorClass = 'white';
         }
-
-        return {
-            motionFunction: motionFunction,
-            colorClass: colorClass
-        };
-    }
-})();
+        // remove any aliens that have made it past the player
+        for(let i = aliensToRemove.length - 1; i >= 0; --i) {
+            el = aliens[aliensToRemove[i]].el;
+            aliens.splice(aliensToRemove[i], 1)[0].sound.stop();
+            document.querySelector('.scene').removeChild(el);
+        }
+        return aliensToRemove.length;
+    },
+    aliens: () => aliens
+};

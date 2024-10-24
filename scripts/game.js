@@ -1,179 +1,71 @@
-var game = (function() {
+let ship = null;
+let track = null;
+let score = 0;
+let lives = 3;
+let gameStarted = false;
+let gamePaused = false;
+let gameLost = false;
+let gameWon = false;
 
-    var module = {};
+const shipStartingX = 3000;
+const shipStartingY = 6000;
+const keysDown = [];
 
-    /**
-     * Globals
-     */
-    var ship,
-        track,
-        hit,        
-        score = 0,
-        lives = 3,
-        keysDown = [],
-        gameStarted = false,
-        gamePaused = false,
-        gameLost = false,
-        gameWon = false,
-        shipStartingX = 3000,
-        shipStartingY = 6000,
-        onCompleted,
-        onDied;
+const fillInScoreCard = () => {
+    const data = game.getScoreCardInfo();
 
-    /**
-     * Initialize
-     */
-    module.init = function(callback) {
+    const bestScore = localStorage['bestScore'];
+    const bestStage = localStorage['bestStage'];
 
-        ship = new Ship(document.querySelector('.ship-container'),
-            document.documentElement.clientWidth,
-            document.documentElement.clientHeight);
-        ship.y = shipStartingY;
-        ship.x = shipStartingX;
-        track = new Track(document.querySelector('.midground'));
-
-        display.setAnnouncerElement(document.querySelector('.announcement'));
-        display.setFirepowerElement(document.querySelector('.firepower-meter-container'));
-        display.setScoreElement(document.querySelector('.score'));
-        display.setLivesElement(document.querySelector('.lives-container'));
-        shotFactory.setTemplate(document.querySelector('.shot'));
-        alienFactory.setTemplate(document.querySelector('.alien-container'));
-        levelPlayer.setLevel(levelData);
-
-        // set up the audio
-        sfx.loadSounds(function() {
-            callback();
-        });
-
-        window.requestAnimationFrame(tick);
-    };
-
-    module.onCompleted = function(fn) {
-        onCompleted = fn;
-    };
-
-    module.onDied = function(fn) {
-        onDied = fn;
-    };
-
-    module.start = function() {
-        gameStarted = true;
-
-        display.showAll();
-
-        sfx.sounds.ship.play(ship.x, ship.y);
-
-        setTimeout(track.start, 1000);
-
-        registerEventHandlers();
-        hideCursor();
-    };
-
-    module.pause = function() {
-        gamePaused = true;
-        display.showPausedMessage();
-        track.stop();
-        sfx.setGain(0);
-        showCursor();
-    };
-
-    module.resume = function() {
-        gamePaused = false;
-        display.hidePausedMessage();
-        track.start();
-        sfx.setGain(1);
-        hideCursor();
-        requestAnimationFrame(tick);
-    };
-
-    module.state = function() {
-        var status;
-
-        if (gameWon) {
-            status = 'won';
-        } else if (gameLost) {
-            status = 'lost';
-        } else if (!gameStarted) {
-            status = 'initialized';
-        } else {
-            if (gamePaused) {
-                status = 'paused';
-            } else {
-                status = 'running';
-            }
-        }
-
-        return status;
-    };
-
-    module.getScoreCardInfo = function() {
-        return {
-            score: Math.round(score).toLocaleString(),
-            stage: levelPlayer.getCurrentStage()
-        };
-    };
-
-    /**
-     * Game loop
-     */
-    function tick(timestamp) {
-        var event;
-
-        if (!gameStarted) {
-            ship.x = shipStartingX;
-            ship.y = shipStartingY;
-        }
-
-        if (gameStarted && !gameLost) {
-            if (0 < keysDown.length) {
-                if (keysDown.indexOf(39) !== -1) {
-                    ship.moveLeft();
-                }
-                if (keysDown.indexOf(37) !== -1) {
-                    ship.moveRight();
-                }
-                if (keysDown.indexOf(38) !== -1) {
-                    ship.moveUp();
-                }
-                if (keysDown.indexOf(40) !== -1) {
-                    ship.moveDown();
-                }
-                if (keysDown.indexOf(32) !== -1) {
-                    shotFactory.create(ship);
-                }
-            }
-
-            event = levelPlayer.getEvents(timestamp);
-
-            alienFactory.spawn(event);
-            display.update(event, shotFactory.firepower(), score);
-
-            doSfx();
-
-        }
-
-
-        ship.updatePosition(timestamp);
-        track.update(ship);
-        shotFactory.updatePositions(ship, timestamp);
-        alienFactory.updatePositions(ship, timestamp);
-        collisionDetector.check(shotFactory.shots(), alienFactory.aliens());
-
-        checkForGameOver(event, lives);
-
-        if (!gamePaused) {
-            window.requestAnimationFrame(tick);
-        }
+    if (typeof bestScore === 'undefined' || parseInt(bestScore.replace(',',''), 10) < parseInt(data.score.replace(',',''), 10)) {
+            document.querySelector('.new-record.score').style.display = 'inline';
+            localStorage['bestScore'] = bestScore = data.score;
+    }
+    if (typeof bestStage === 'undefined' || bestStage < data.stage) {
+            document.querySelector('.new-record.stage').style.display = 'inline';
+            localStorage['bestStage'] = bestStage = data.stage;
     }
 
-    function doSfx() {
+    document.querySelector('.stage-reached').innerText = data.stage;
+    document.querySelector('.best-stage').innerText = bestStage || data.stage;
+    document.querySelector('.score-achieved').innerText = data.score;
+    document.querySelector('.best-score').innerText = bestScore || data.score;
+};
+
+const tick = (timestamp, alienFactory, shotFactory, display, sfx, levelPlayer)  => {
+    if (!gameStarted) {
+        ship.x = shipStartingX;
+        ship.y = shipStartingY;
+    }
+    if (gameStarted && !gameLost) {
+        if (keysDown.length > 0) {
+            if (keysDown.indexOf(39) !== -1) {
+                ship.moveLeft();
+            }
+            if (keysDown.indexOf(37) !== -1) {
+                ship.moveRight();
+            }
+            if (keysDown.indexOf(38) !== -1) {
+                ship.moveUp();
+            }
+            if (keysDown.indexOf(40) !== -1) {
+                ship.moveDown();
+            }
+            if (keysDown.indexOf(32) !== -1) {
+                shotFactory.create(ship);
+            }
+        }
+        const event = levelPlayer.getEvents(timestamp);
+        alienFactory.spawn(event);
+        display.update(event, shotFactory.firepower(), score);
+
         sfx.sounds.ship.setParameters(ship.x, ship.y, ship.vx, ship.vy);
 
         // randomly make alien noises
         if (Math.random() < 0.001) {
-            var aliens = alienFactory.aliens();
+            const aliens = alienFactory.aliens();
             if (0 < aliens.length) {
-                var alien = aliens[Math.floor(Math.random() * aliens.length)];
+                const alien = aliens[Math.floor(Math.random() * aliens.length)];
                 sfx.sounds.alien.play(alien.x, alien.y, alien.z);
             }
         }
@@ -186,34 +78,109 @@ var game = (function() {
         })
     }
 
-    function checkForGameOver(event, lives) {
-        if (event && event.type === 'completed') {
-            if (!gameWon) {
-                onCompleted();
-                gameWon = true;
-            }
+    ship.updatePosition(timestamp);
+    track.update(ship);
+    shotFactory.updatePositions(ship, timestamp);
+    alienFactory.updatePositions(ship, timestamp);
+    collisionDetector.check(shotFactory.shots(), alienFactory.aliens());
+
+    if (event && event.type === 'completed') {
+        if (!gameWon) {
+            document.querySelector('.game-over-container').classList.remove('hidden');
+            document.querySelector('.game-won').classList.remove('hidden');
+            fillInScoreCard();
+            gameWon = true;
         }
-        if (lives === 0) {
-            if (!gameLost) {
-                onDied();
-                gameLost = true;
-            }
+    }
+    if (lives === 0) {
+        if (!gameLost) {
+            document.querySelector('.game-over-container').classList.remove('hidden');
+            document.querySelector('.game-lost').classList.remove('hidden');
+            fillInScoreCard();
+            gameLost = true;
         }
     }
 
-    function hideCursor() {
-        document.body.style.cursor = 'none';
+    if (!gamePaused) {
+        window.requestAnimationFrame(ts => tick(ts, alienFactory, shotFactory, display, sfx, levelPlayer));
     }
-    function showCursor() {
-        document.body.style.cursor = 'inherit';
-    }
+};
 
-    function registerEventHandlers() {
-        /**
-         * Event handlers
-         */
+export const game = {
+    init: ({ display, sfx, Ship, Track, shotFactory, alienFactory, levelPlayer }) => {
+        ship = new Ship(document.querySelector('.ship-container'));
+        ship.y = shipStartingY;
+        ship.x = shipStartingX;
+        track = new Track(document.querySelector('.midground'));
+        display.setAnnouncerElement(document.querySelector('.announcement'));
+        display.setFirepowerElement(document.querySelector('.firepower-meter-container'));
+        display.setScoreElement(document.querySelector('.score'));
+        display.setLivesElement(document.querySelector('.lives-container'));
+        shotFactory.setTemplate(document.querySelector('.shot'));
+        alienFactory.setTemplate(document.querySelector('.alien-container'));
+        levelPlayer.resetLevel();
+        // set up the audio
+        sfx.loadSounds(() => {
+            music.load('./assets/sfx/music.mp3', () => {
+                document.querySelector('.loader').classList.add('hidden');
+                document.addEventListener('keydown', (e) => {
+                    const keyCode = e.which;
+                    if (keyCode === 32) {
+                        if (game.state() === 'initialized') {
+                            document.querySelector('.browser-warning').style.display = 'none';
+                            game.start();
+                            music.play();
+                            visualizer.start(music);
+                            document.querySelector('.title-screen-container').classList.add('hidden');
+                        }
+                    }
+                    if (keyCode === 80) {
+                        if (game.state() === 'paused') {
+                            game.resume();
+                            music.resume();
+                        } else {
+                            game.pause();
+                            music.pause();
+                        }
+                    }
+                    if (keyCode === 82) {
+                        if (game.state() === 'won' || game.state() === 'lost') {
+                            document.location.reload();
+                        }
+                    }
+                });
+            
+                const instructionsDiv = document.querySelector('.instructions');
+                const aboutDiv = document.querySelector('.about');
+            
+                instructionsDiv.querySelector('.open-instructions').addEventListener('click', function(e) {
+                    instructionsDiv.classList.add('display');
+                    e.preventDefault();
+                });
+                instructionsDiv.querySelector('.close-instructions').addEventListener('click', function(e) {
+                    instructionsDiv.classList.remove('display');
+                    e.preventDefault();
+                });
+                aboutDiv.querySelector('.open-about').addEventListener('click', function(e) {
+                    aboutDiv.classList.add('display');
+                    e.preventDefault();
+                });
+                aboutDiv.querySelector('.close-about').addEventListener('click', function(e) {
+                    aboutDiv.classList.remove('display');
+                    e.preventDefault();
+                });
+            });
+            visualizer.setElement(document.querySelector('.visualizer'));
+        });
+        window.requestAnimationFrame(ts => tick(ts, alienFactory, shotFactory, display, sfx, levelPlayer));
+    },
+    start: (display, sfx) => {
+        gameStarted = true;
+        display.showAll();
+        sfx.sounds.ship.play(ship.x, ship.y);
+        setTimeout(track.start, 1000);
         document.addEventListener('keydown', function (e) {
-            var keyCode = e.which;
+            const keyCode = e.which;
             if (keysDown.indexOf(keyCode) === -1) {
                 keysDown.push(keyCode);
                 if (keyCode === 65) {
@@ -222,21 +189,21 @@ var game = (function() {
             }
         });
         document.addEventListener('keyup', function (e) {
-            var keyCode = e.which;
+            const keyCode = e.which;
             keysDown.splice(keysDown.indexOf(keyCode), 1);
         });
-
+    
         document.addEventListener('hit', function (e) {
-            var position = e.detail;
+            const position = e.detail;
             score += 100 * shotFactory.firepower();
             levelPlayer.alienRemoved();
             sfx.sounds.explosion.play(position.x, position.y, position.z);
         });
-
+    
         document.addEventListener('shot', function (e) {
             sfx.sounds.gun.play(ship, e.detail.firepower);
         });
-
+    
         document.addEventListener('miss', function (e) {
             if (0 < lives) {
                 lives--;
@@ -245,8 +212,40 @@ var game = (function() {
             }
             levelPlayer.alienRemoved();
         });
-    }
-
-    return module;
-
-})();
+        document.body.style.cursor = 'none'; // TODO
+    },
+    pause: (display, sfx, track) => {
+        gamePaused = true;
+        display.showPausedMessage();
+        track.stop();
+        sfx.setGain(0);
+        document.body.style.cursor = 'inherit';
+    },
+    resume: (display, sfx, track) => {
+        gamePaused = false;
+        display.hidePausedMessage();
+        track.start();
+        sfx.setGain(1);
+        document.body.style.cursor = 'none';
+        requestAnimationFrame(ts => tick(ts, alienFactory, shotFactory, display, sfx, levelPlayer));
+    },
+    state: () => {
+        let status = '';
+        if (gameWon) {
+            status = 'won';
+        } else if (gameLost) {
+            status = 'lost';
+        } else if (!gameStarted) {
+            status = 'initialized';
+        } else if (gamePaused) {
+            status = 'paused';
+        } else {
+            status = 'running';
+        }
+        return status;
+    },
+    getScoreCardInfo: levelPlayer => ({
+        score: Math.round(score).toLocaleString(),
+        stage: levelPlayer.getCurrentStage()
+    })
+};

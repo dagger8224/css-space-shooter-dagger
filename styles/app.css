@@ -83,14 +83,14 @@ a:active {
 .title-screen-container .title-container {
   margin: 10vh auto;
   width: 80vw;
-  font-size: 13vw;
+  font-size: 8vw;
   color: black;
   line-height: 10vw;
   text-shadow: -1px -1px 10px #008000, 1px -1px 0 #008000, -1px 1px 0 #008000, 1px 1px 10px #008000;
 }
 .title-screen-container .title-container .line1 {
   margin-left: -17vw;
-  font-size: 8vw;
+  font-size: 10vw;
   line-height: 6vw;
 }
 .title-screen-container .title-container .line2 {
@@ -98,6 +98,7 @@ a:active {
 }
 .title-screen-container .title-container .line3 {
   margin-left: 0;
+  font-size: 4vw;
 }
 .title-screen-container .info-container {
   color: white;
